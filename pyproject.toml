@@ -1,0 +1,20 @@
+[tool.poetry]
+name = "plat-prices"
+version = "0.1.0"
+description = "initial dependecies for ingestion and transformation"
+authors = ["Zulkifly, Eddy Arief <ezulkifly3@gatech.edu>"]
+readme = "README.md"
+packages = [{include = "plat_prices"}]
+
+[tool.poetry.dependencies]
+python = "^3.9"
+requests = "^2.31.0"
+bs4 = "^0.0.1"
+pandas = "^2.0.3"
+dbt-bigquery = "^1.5.3"
+dbt-core = "^1.5.2"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
