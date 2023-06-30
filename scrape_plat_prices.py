@@ -161,12 +161,15 @@ def upload_csv_to_bigquery(storage_client,bigquery_client,bucket_name, file_name
 
 if __name__ == '__main__':
 
-    # Path to the service account key file
-    path_to_service_account_file = os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
+    # Pass Json as a string
+    service_account_json = os.getenv('GOOGLE_SERVICE_ACCOUNT')
+
+    #Parse string as json
+    credentials = json.loads(service_account_json)
 
     # Initialize the Cloud Storage and BigQuery clients
-    storage_client = storage.Client.from_service_account_json(path_to_service_account_file)
-    bigquery_client = bigquery.Client.from_service_account_json(path_to_service_account_file)
+    storage_client = storage.Client.from_service_account_info(credentials)
+    bigquery_client = bigquery.Client.from_service_account_info(credentials)
 
     today = get_todays_date()
     essential = get_ids("https://platprices.com/psplus/essential/", 'CA')
