@@ -1,0 +1,32 @@
+name: Run_Plat_Price
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    
+    - name: Set up Python 3.9.17
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.9.17
+
+    - name: Install Poetry
+      run: |
+        curl -sSL https://install.python-poetry.org | python3 -
+
+    - name: Install dependencies
+      run: |
+        poetry config virtualenvs.create false
+        poetry install
+
+    - name: Run Python Script
+      run: python scrape_plat_prices.py
