@@ -7,7 +7,12 @@ from bs4 import BeautifulSoup
 import re
 import pandas as pd
 import json
+from google.cloud import storage
+from datetime import datetime
 
+def get_todays_date():
+    today = datetime.now().date()
+    return today
 
 def create_df(game_list, region):
     for idx, game in enumerate(game_list):
@@ -105,15 +110,46 @@ def get_ids(url, region):
         ids = extract_single(soup)
         return ids
 
+def upload_dataframe_to_gcs(df, bucket_name, destination_blob_name):
+    """Converts dataframe to csv and uploads the file to the bucket."""
+
+    # Path to the service account key file
+    path_to_service_account_file = os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
+
+    # Create a client
+    storage_client = storage.Client.from_service_account_json(path_to_service_account_file)
+
+    # Get the bucket
+    bucket = storage_client.bucket(bucket_name)
+
+    # Create a blob in the bucket
+    blob = bucket.blob(destination_blob_name)
+
+    # Convert DataFrame to CSV
+    df.to_csv(destination_blob_name, index=False)
+
+    # Upload the local file to the blob
+    blob.upload_from_filename(destination_blob_name)
+
+    # Optionally, delete the local CSV file after upload
+    # if os.path.isfile(destination_blob_name):
+    #     os.remove(destination_blob_name)
+
+# Sample usage
+# df = pd.DataFrame({'A': [1, 2, 3], 'B': [4, 5, 6]})
+# upload_dataframe_to_gcs(df, "my-bucket", "storage-object-name.csv")
 
 if __name__ == '__main__':
-    api_key = os.getenv('PLAT_PRICE_KEY')
+    today = get_todays_date()
     essential = get_ids("https://platprices.com/psplus/essential/", 'CA')
     essential_df = create_df(essential, 'CA')
-    essential_df.to_csv('essential_df.csv')
+    essential_object = f"essential_df_{today}"
+    upload_dataframe_to_gcs(essential_df,"plat-prices",f"{essential_object}.csv")
 
     extra = get_ids("https://platprices.com/psplus/extra/", 'CA')
     extra_df = create_df(extra, 'CA')
-    extra_df.to_csv('extra_df.csv')
+    extra_object = f"extra_df_{today}"
+    upload_dataframe_to_gcs(extra_df,"plat-prices",f"{extra_object}.csv")
+
 
 
