@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "initial dependecies for ingestion and transformation"
 authors = ["Zulkifly, Eddy Arief <ezulkifly3@gatech.edu>"]
 readme = "README.md"
-packages = [{include = "plat_prices"}]
+
 
 [tool.poetry.dependencies]
 python = "^3.9"
