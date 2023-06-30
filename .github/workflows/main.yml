@@ -25,6 +25,7 @@ jobs:
 
     - name: Install dependencies
       run: |
+        cd ..
         poetry config virtualenvs.create false
         poetry install
 
