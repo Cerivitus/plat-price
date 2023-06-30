@@ -7,7 +7,7 @@ from bs4 import BeautifulSoup
 import re
 import pandas as pd
 import json
-from google.cloud import storage
+from google.cloud import storage,bigquery
 from datetime import datetime
 
 def get_todays_date():
@@ -110,14 +110,8 @@ def get_ids(url, region):
         ids = extract_single(soup)
         return ids
 
-def upload_dataframe_to_gcs(df, bucket_name, destination_blob_name):
+def upload_dataframe_to_gcs(storage_client,df, bucket_name, destination_blob_name):
     """Converts dataframe to csv and uploads the file to the bucket."""
-
-    # Path to the service account key file
-    path_to_service_account_file = os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
-
-    # Create a client
-    storage_client = storage.Client.from_service_account_json(path_to_service_account_file)
 
     # Get the bucket
     bucket = storage_client.bucket(bucket_name)
@@ -131,25 +125,61 @@ def upload_dataframe_to_gcs(df, bucket_name, destination_blob_name):
     # Upload the local file to the blob
     blob.upload_from_filename(destination_blob_name)
 
-    # Optionally, delete the local CSV file after upload
-    # if os.path.isfile(destination_blob_name):
-    #     os.remove(destination_blob_name)
 
-# Sample usage
-# df = pd.DataFrame({'A': [1, 2, 3], 'B': [4, 5, 6]})
-# upload_dataframe_to_gcs(df, "my-bucket", "storage-object-name.csv")
+def upload_csv_to_bigquery(storage_client,bigquery_client,bucket_name, file_name, dataset_id):
+
+    # Get the Cloud Storage bucket and blob objects
+    bucket = storage_client.bucket(bucket_name)
+    blob = bucket.blob(file_name)
+
+    # Extract the file name without the extension
+    table_id = os.path.splitext(os.path.basename(file_name))[0]
+
+    # Specify the BigQuery dataset and table where you want to upload the data
+    dataset_ref = bigquery_client.dataset(dataset_id)
+    table_ref = dataset_ref.table(table_id)
+
+    # Load the CSV file into BigQuery
+    job_config = bigquery.LoadJobConfig()
+    job_config.source_format = bigquery.SourceFormat.CSV
+    job_config.skip_leading_rows = 1  # Skip the CSV header row
+    job_config.autodetect = True  # Automatically detect the schema
+
+    load_job = bigquery_client.load_table_from_uri(
+        blob.public_url,
+        table_ref,
+        job_config=job_config
+    )
+
+    load_job.result()  # Wait for the job to complete
+
+    if load_job.state == "DONE":
+        print(f"CSV file {file_name} uploaded to BigQuery table {table_id} successfully.")
+    else:
+        print(f"Error uploading CSV file {file_name} to BigQuery table {table_id}.")
+
 
 if __name__ == '__main__':
+
+    # Path to the service account key file
+    path_to_service_account_file = os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
+
+    # Initialize the Cloud Storage and BigQuery clients
+    storage_client = storage.Client.from_service_account_json(path_to_service_account_file)
+    bigquery_client = bigquery.Client.from_service_account_json(path_to_service_account_file)
+
     today = get_todays_date()
     essential = get_ids("https://platprices.com/psplus/essential/", 'CA')
     essential_df = create_df(essential, 'CA')
     essential_object = f"essential_df_{today}"
-    upload_dataframe_to_gcs(essential_df,"plat-prices",f"{essential_object}.csv")
+    upload_dataframe_to_gcs(storage_client,essential_df,"plat-prices",f"{essential_object}.csv")
+    upload_csv_to_bigquery(storage_client,bigquery_client,"plat-prices", f"{essential_object}.csv", "raw_plat_price")
 
     extra = get_ids("https://platprices.com/psplus/extra/", 'CA')
     extra_df = create_df(extra, 'CA')
     extra_object = f"extra_df_{today}"
-    upload_dataframe_to_gcs(extra_df,"plat-prices",f"{extra_object}.csv")
+    upload_dataframe_to_gcs(storage_client,extra_df,"plat-prices",f"{extra_object}.csv")
+    upload_csv_to_bigquery(storage_client,bigquery_client,"plat-prices", f"{extra_object}.csv", "raw_plat_price")
 
 
 
