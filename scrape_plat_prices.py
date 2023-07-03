@@ -38,6 +38,10 @@ def get_data(game_id, region):
     #     print(json_data.keys())
     df = pd.DataFrame.from_dict(json_data, orient='index')
     transpose_df = df.transpose()
+
+    # Adding a timestamp column 'created_at'
+    transpose_df['created_at'] = pd.to_datetime(datetime.utcnow())
+
     return transpose_df
 
 
